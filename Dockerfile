@@ -1,8 +1,5 @@
 FROM python:3.8-slim-buster
 
-# Expose the port for streamlit
-EXPOSE 8501
-
 RUN apt-get update && apt-get install -y --no-install-recommends \
         ca-certificates \
         && \
@@ -16,16 +13,16 @@ RUN pip install --no-cache-dir \
         numpy \
         onnxruntime \
         tqdm \
-        transformers \
-        streamlit
+        transformers[ja]
 
 # Download transformers models in advance
-ARG TRANSFORMERS_BASE_MODEL_NAME="bert-base-uncased"
+ARG TRANSFORMERS_BASE_MODEL_NAME="cl-tohoku/bert-base-japanese-v2"
 RUN python -c "from transformers import AutoTokenizer; AutoTokenizer.from_pretrained('${TRANSFORMERS_BASE_MODEL_NAME}')"
 ENV TRANSFORMERS_OFFLINE=1
 
 # Copy files to the image
 WORKDIR /app
+COPY models/ models
 COPY soseki/ soseki
-COPY .streamlit/ .streamlit
-COPY demo.py .
+COPY predict.py .
+COPY submission.sh .

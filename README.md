@@ -1,9 +1,8 @@
-# Sōseki
+# AIO2 BPR Baseline
 
-Sōseki is an implementation of an end-to-end question answering (QA) system.
+This is a question answering (QA) system based on [studio-ousia/soseki](https://github.com/studio-ousia/soseki), which utilizes [Binary Passage Retriever (BPR)](https://github.com/studio-ousia/bpr), an efficient passages retrieval model for a large collection of documents.
 
-Currently, Sōseki makes use of [Binary Passage Retriever (BPR)](https://github.com/studio-ousia/bpr), an efficient passages retrieval model for a large collection of documents.
-BPR was originally developed to achieve high computational efficiency of the QA system submitted to the [Systems under 6GB track](https://ai.google.com/research/NaturalQuestions/efficientqa) in the [NeurIPS 2020 EfficientQA competition](https://efficientqa.github.io/).
+This work is provided as one of the baseline systems for [AIO2 competition](https://sites.google.com/view/project-aio/competition2).
 
 ## Installation
 
@@ -17,18 +16,22 @@ $ pip install -r requirements.txt
 
 ## Example Usage
 
-Before you start, you need to download the datasets available on the
-[DPR repository](https://github.com/facebookresearch/DPR) into `<DPR_DATASET_DIR>`.
+Before you start, you need to download the datasets available at
+[cl-tohoku/AIO2_DPR_baseline](https://github.com/cl-tohoku/AIO2_DPR_baseline) by running the downloading script `scripts/download_data.sh`.
 
-We used a server with 4 GeForce RTX 2080 GPUs with 11GB memory for the experiments.
+```sh
+$ bash scripts/download_data.sh <DATASET_DIR>
+```
+
+In the following experiments, we used a server with 4 GeForce RTX 2080 GPUs with 11GB memory.
 
 **1. Build passage database**
 
 ```sh
 $ python build_passage_db.py \
-    --passage_file <DPR_DATASET_DIR>/wikipedia_split/psgs_w100.tsv \
+    --passage_file <DATASET_DIR>/wiki/jawiki-20210503-paragraphs.tsv.gz \
     --db_file <WORK_DIR>/passages.db \
-    --db_map_size 21000000000 \
+    --db_map_size 10000000000 \
     --skip_header
 ```
 
@@ -36,22 +39,22 @@ $ python build_passage_db.py \
 
 ```sh
 $ python train_biencoder.py \
-    --train_file <DPR_DATASET_DIR>/retriever/nq-train.json \
-    --dev_file <DPR_DATASET_DIR>/retriever/nq-dev.json \
+    --train_file <DATASET_DIR>/aio/abc_01-12_retriever.json.gz \
+    --dev_file <DATASET_DIR>/aio/aio_01_dev_retriever.json.gz \
     --output_dir <WORK_DIR>/biencoder \
-    --max_question_length 64 \
-    --max_passage_length 192 \
+    --max_question_length 128 \
+    --max_passage_length 256 \
     --num_negative_passages 1 \
     --shuffle_hard_negative_passages \
     --shuffle_normal_negative_passages \
-    --base_pretrained_model bert-base-uncased \
+    --base_pretrained_model cl-tohoku/bert-base-japanese-v2 \
     --binary \
-    --train_batch_size 16 \
-    --eval_batch_size 16 \
+    --train_batch_size 8 \
+    --eval_batch_size 8 \
     --learning_rate 1e-5 \
     --warmup_proportion 0.1 \
     --gradient_clip_val 2.0 \
-    --max_epochs 40 \
+    --max_epochs 20 \
     --gpus 4 \
     --precision 16 \
     --accelerator ddp
@@ -61,10 +64,10 @@ $ python train_biencoder.py \
 
 ```sh
 $ python build_passage_embeddings.py \
-    --biencoder_file <WORK_DIR>/biencoder/lightning_logs/version_0/checkpoints/best.ckpt \
+    --biencoder_file <WORK_DIR>/biencoder/lightning_logs/version_0/checkpoints/last.ckpt \
     --passage_db_file <WORK_DIR>/passages.db \
     --output_file <WORK_DIR>/passage_embeddings.idx \
-    --max_passage_length 192 \
+    --max_passage_length 256 \
     --batch_size 2048 \
     --device_ids 0,1,2,3
 ```
@@ -78,98 +81,98 @@ $ python evaluate_retriever.py \
     --biencoder_file <WORK_DIR>/biencoder/lightning_logs/version_0/checkpoints/last.ckpt \
     --passage_db_file <WORK_DIR>/passages.db \
     --passage_embeddings_file <WORK_DIR>/passage_embeddings.idx \
-    --qa_file <DPR_DATASET_DIR>/retriever/qas/nq-train.csv \
-    --output_file <WORK_DIR>/reader_data/nq_train.jsonl \
+    --qa_file <DATASET_DIR>/aio/abc_01-12_retriever.tsv \
+    --output_file <WORK_DIR>/reader_data/abc_01-12.jsonl \
     --batch_size 64 \
-    --max_question_length 64 \
+    --max_question_length 128 \
     --top_k 1,2,5,10,20,50,100 \
     --binary \
     --binary_k 2048 \
-    --answer_match_type dpr_string \
+    --answer_match_type simple_nfkc \
     --include_title_in_passage \
     --device_ids 0,1,2,3
 # The result should be logged as follows:
-# Recall at 1: 0.4867 (38529/79168)
-# Recall at 2: 0.6059 (47964/79168)
-# Recall at 5: 0.7275 (57592/79168)
-# Recall at 10: 0.7862 (62245/79168)
-# Recall at 20: 0.8251 (65319/79168)
-# Recall at 50: 0.8588 (67991/79168)
-# Recall at 100: 0.8748 (69255/79168)
+# Recall at 1: 0.6041 (10714/17735)
+# Recall at 2: 0.7123 (12633/17735)
+# Recall at 5: 0.8030 (14242/17735)
+# Recall at 10: 0.8415 (14924/17735)
+# Recall at 20: 0.8686 (15404/17735)
+# Recall at 50: 0.8937 (15849/17735)
+# Recall at 100: 0.9064 (16075/17735)
 
 $ python evaluate_retriever.py \
     --biencoder_file <WORK_DIR>/biencoder/lightning_logs/version_0/checkpoints/last.ckpt \
     --passage_db_file <WORK_DIR>/passages.db \
     --passage_embeddings_file <WORK_DIR>/passage_embeddings.idx \
-    --qa_file <DPR_DATASET_DIR>/retriever/qas/nq-dev.csv \
-    --output_file <WORK_DIR>/reader_data/nq_dev.jsonl \
+    --qa_file <DATASET_DIR>/aio/aio_01_dev_retriever.tsv \
+    --output_file <WORK_DIR>/reader_data/aio_01_dev.jsonl \
     --batch_size 64 \
-    --max_question_length 64 \
+    --max_question_length 128 \
     --top_k 1,2,5,10,20,50,100 \
     --binary \
     --binary_k 2048 \
-    --answer_match_type dpr_string \
+    --answer_match_type simple_nfkc \
     --include_title_in_passage \
     --device_ids 0,1,2,3
 # The result should be logged as follows:
-# Recall at 1: 0.3984 (3489/8757)
-# Recall at 2: 0.5085 (4453/8757)
-# Recall at 5: 0.6377 (5584/8757)
-# Recall at 10: 0.7075 (6196/8757)
-# Recall at 20: 0.7588 (6645/8757)
-# Recall at 50: 0.8122 (7112/8757)
-# Recall at 100: 0.8409 (7364/8757)
+# Recall at 1: 0.6160 (1227/1992)
+# Recall at 2: 0.7279 (1450/1992)
+# Recall at 5: 0.8308 (1655/1992)
+# Recall at 10: 0.8740 (1741/1992)
+# Recall at 20: 0.9096 (1812/1992)
+# Recall at 50: 0.9458 (1884/1992)
+# Recall at 100: 0.9639 (1920/1992)
 
 $ python evaluate_retriever.py \
     --biencoder_file <WORK_DIR>/biencoder/lightning_logs/version_0/checkpoints/last.ckpt \
     --passage_db_file <WORK_DIR>/passages.db \
     --passage_embeddings_file <WORK_DIR>/passage_embeddings.idx \
-    --qa_file <DPR_DATASET_DIR>/retriever/qas/nq-test.csv \
-    --output_file <WORK_DIR>/reader_data/nq_test.jsonl \
+    --qa_file <DATASET_DIR>/aio/aio_01_test_retriever.tsv \
+    --output_file <WORK_DIR>/reader_data/aio_01_test.jsonl \
     --batch_size 64 \
-    --max_question_length 64 \
+    --max_question_length 128 \
     --top_k 1,2,5,10,20,50,100 \
     --binary \
     --binary_k 2048 \
-    --answer_match_type dpr_string \
+    --answer_match_type simple_nfkc \
     --include_title_in_passage \
     --device_ids 0,1,2,3
 # The result should be logged as follows:
-# Recall at 1: 0.4058 (1465/3610)
-# Recall at 2: 0.5191 (1874/3610)
-# Recall at 5: 0.6443 (2326/3610)
-# Recall at 10: 0.7144 (2579/3610)
-# Recall at 20: 0.7687 (2775/3610)
-# Recall at 50: 0.8233 (2972/3610)
-# Recall at 100: 0.8504 (3070/3610)
+# Recall at 1: 0.5875 (1175/2000)
+# Recall at 2: 0.7055 (1411/2000)
+# Recall at 5: 0.8140 (1628/2000)
+# Recall at 10: 0.8675 (1735/2000)
+# Recall at 20: 0.9020 (1804/2000)
+# Recall at 50: 0.9370 (1874/2000)
+# Recall at 100: 0.9580 (1916/2000)
 ```
 
 **5. Train a reader**
 
 ```sh
 $ python train_reader.py \
-    --train_file <WORK_DIR>/reader_data/nq_train.jsonl \
-    --dev_file <WORK_DIR>/reader_data/nq_dev.jsonl  \
+    --train_file <WORK_DIR>/reader_data/abc_01-12.jsonl \
+    --dev_file <WORK_DIR>/reader_data/aio_01_dev.jsonl \
     --output_dir <WORK_DIR>/reader \
-    --train_num_passages 24 \
-    --eval_num_passages 100 \
-    --max_input_length 256 \
+    --train_num_passages 16 \
+    --eval_num_passages 50 \
+    --max_input_length 384 \
     --include_title_in_passage \
     --shuffle_positive_passage \
     --shuffle_negative_passage \
     --num_dataloader_workers 1 \
-    --base_pretrained_model bert-base-uncased \
+    --base_pretrained_model cl-tohoku/bert-base-japanese-v2 \
+    --answer_normalization_type simple_nfkc \
     --train_batch_size 1 \
     --eval_batch_size 2 \
     --learning_rate 1e-5 \
     --warmup_proportion 0.1 \
     --accumulate_grad_batches 4 \
     --gradient_clip_val 2.0 \
-    --max_epochs 20 \
+    --max_epochs 10 \
     --gpus 4 \
     --precision 16 \
-    --accelerator ddp \
-    --answer_normalization_type dpr
+    --accelerator ddp
 ```
 
 **6. Evaluate the reader**
@@ -177,7 +180,7 @@ $ python train_reader.py \
 ```sh
 $ python evaluate_reader.py \
     --reader_file <WORK_DIR>/reader/lightning_logs/version_0/checkpoints/best.ckpt \
-    --test_file <WORK_DIR>/reader_data/nq_dev.jsonl \
+    --test_file <WORK_DIR>/reader_data/aio_01_dev.jsonl \
     --test_num_passages 100 \
     --test_max_load_passages 100 \
     --test_batch_size 4 \
@@ -186,15 +189,15 @@ $ python evaluate_reader.py \
 # The result should be printed as follows:
 # --------------------------------------------------------------------------------
 # DATALOADER:0 TEST RESULTS
-# {'test_answer_accuracy': 0.3944272994995117,
-#  'test_classifier_precision': 0.5893570780754089}
+# {'test_answer_accuracy': 0.6882529854774475,
+#  'test_classifier_precision': 0.8012048006057739}
 # --------------------------------------------------------------------------------
 ```
 
 ```sh
 $ python evaluate_reader.py \
     --reader_file <WORK_DIR>/reader/lightning_logs/version_0/checkpoints/best.ckpt \
-    --test_file <WORK_DIR>/reader_data/nq_test.jsonl \
+    --test_file <WORK_DIR>/reader_data/aio_01_test.jsonl \
     --test_num_passages 100 \
     --test_max_load_passages 100 \
     --test_batch_size 4 \
@@ -203,12 +206,12 @@ $ python evaluate_reader.py \
 # The result should be printed as follows:
 # --------------------------------------------------------------------------------
 # DATALOADER:0 TEST RESULTS
-# {'test_answer_accuracy': 0.3889196813106537,
-#  'test_classifier_precision': 0.5728532075881958}
+# {'test_answer_accuracy': 0.6915000081062317,
+#  'test_classifier_precision': 0.8005000352859497}
 # --------------------------------------------------------------------------------
 ```
 
-**7. (optional) Convert the trained models into ONNX format**
+**7. Convert the trained models into ONNX format**
 
 ```sh
 $ python convert_models_to_onnx.py \
@@ -217,37 +220,54 @@ $ python convert_models_to_onnx.py \
     --output_dir <WORK_DIR>/onnx
 ```
 
-**8. Run demo**
+### Subission for AIO2 Competition
+
+**1. Copy the models and data files into `models/` directory**
+
+The files should be placed and renamed as follows:
 
 ```sh
-$ streamlit run demo.py --browser.serverAddress localhost --browser.serverPort 8501 -- \
-    --biencoder_ckpt_file <WORK_DIR>/biencoder/lightning_logs/version_0/checkpoints/last.ckpt \
-    --reader_ckpt_file <WORK_DIR>/reader/lightning_logs/version_0/checkpoints/best.ckpt \
-    --passage_db_file <WORK_DIR>/passages.db \
-    --passage_embeddings_file <WORK_DIR>/passage_embeddings.idx \
-    --device cuda:0
+models
+├── passage_embeddings.idx      # from <WORK_DIR>/passage_embeddings.idx
+├── onnx
+│   ├── biencoder_hparams.json  # from <WORK_DIR>/onnx/biencoder_hparams.json
+│   ├── question_encoder.onnx   # from <WORK_DIR>/onnx/question_encoder.onnx
+│   ├── reader.onnx             # from <WORK_DIR>/onnx/reader.onnx
+│   └── reader_hparams.json     # from <WORK_DIR>/onnx/reader_hparams.json
+└── passages.tsv.gz             # from <DATASET_DIR>/wiki/jawiki-20210503-paragraphs.tsv.gz
 ```
 
-or if you have exported the models to ONNX format:
+**Note:** You do not have to include `<WORK_DIR>/onnx/passage_encoder.onnx` in the directory since it is not used in the prediction stage.
+
+**2. Build the Docker image**
 
 ```sh
-$ streamlit run demo.py --browser.serverAddress localhost --browser.serverPort 8501 -- \
-    --onnx_model_dir <WORK_DIR>/onnx \
-    --passage_db_file <WORK_DIR>/passages.db \
-    --passage_embeddings_file <WORK_DIR>/passage_embeddings.idx
+$ docker build -t aio2-bpr-baseline .
 ```
 
-Then open http://localhost:8501.
-
-The demo can also be launched with Docker:
+You can find the size of the image by executing the command below:
 
 ```sh
-$ docker build -t soseki .
-$ docker run --rm -v <WORK_DIR>:/app/models -p 8501:8501 -it soseki \
-    streamlit run demo.py --browser.serverAddress localhost --browser.serverPort 8501 -- \
-        --onnx_model_dir models/onnx \
-        --passage_db_file models/passages.db \
-        --passage_embeddings_file models/passage_embeddings.idx
+$ docker run --rm aio2-bpr-baseline du -h --max-depth=0 /
+```
+
+**3. Run the image to perform prediction**
+
+We assume `<TEST_DATA_DIR>` contains a test file such as [`aio_02_dev_unlabeled_v1.0.jsonl`](https://jaqket.s3.ap-northeast-1.amazonaws.com/data/aio_02/aio_02_dev_unlabeled_v1.0.jsonl), which is distributed on the [AIO2 official website](https://sites.google.com/view/project-aio/competition2).
+
+Be sure to specify `<TEST_DATA_DIR>` by the absolute path.
+
+```sh
+$ docker run --rm -v <TEST_DATA_DIR>:/app/data -it aio2-bpr-baseline \
+    bash submission.sh data/aio_02_dev_unlabeled_v1.0.jsonl data/predictions.jsonl
+```
+
+The prediction result will be saved to `<TEST_DATA_DIR>/predictions.jsonl`.
+
+**4. Save a Docker image to file**
+
+```sh
+$ docker save aio2-bpr-baseline | gzip > aio2-bpr-baseline.tar.gz
 ```
 
 ## License
@@ -256,18 +276,3 @@ $ docker run --rm -v <WORK_DIR>:/app/models -p 8501:8501 -it soseki \
 work is licensed under a
 <a rel="license" href="http://creativecommons.org/licenses/by-nc/4.0/">Creative
 Commons Attribution-NonCommercial 4.0 International License</a>.
-
-## Citation
-
-If you find this work useful, please cite the following paper:
-
-[Efficient Passage Retrieval with Hashing for Open-domain Question Answering](https://arxiv.org/abs/2106.00882)
-
-```
-@inproceedings{yamada2021bpr,
-  title={Efficient Passage Retrieval with Hashing for Open-domain Question Answering},
-  author={Ikuya Yamada and Akari Asai and Hannaneh Hajishirzi},
-  booktitle={ACL},
-  year={2021}
-}
-```
