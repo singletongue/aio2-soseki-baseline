@@ -2,7 +2,14 @@
 
 This is a question answering (QA) system based on [studio-ousia/soseki](https://github.com/studio-ousia/soseki), which utilizes [Binary Passage Retriever (BPR)](https://github.com/studio-ousia/bpr), an efficient passages retrieval model for a large collection of documents.
 
-This work is provided as one of the baseline systems for [AIO2 competition](https://sites.google.com/view/project-aio/competition2).
+BPR is an efficient neural retrieval model for open-domain question answering.
+BPR integrates a *learning-to-hash* technique into [Dense Passage Retriever (DPR)](https://github.com/facebookresearch/DPR) to **represent the passage embeddings using compact binary codes** rather than
+continuous vectors.
+It substantially **reduces the memory size without a loss of accuracy** tested on several QA datasets.
+(Please check out [the original BPR repository](https://github.com/studio-ousia/bpr) for more detailed information.)
+
+This repository's work is provided as one of the baseline systems for [AIO2 competition](https://sites.google.com/view/project-aio/competition2).
+Using the datasets for [cl-tohoku/AIO2_DPR_baseline](https://github.com/cl-tohoku/AIO2_DPR_baseline), the DPR baseline takes 20GB to encode 6.8 million paragraphs from Japanese Wikipedia, while our BPR takes only **674MB** to encode the same set of passages.
 
 ## Installation
 
@@ -269,6 +276,8 @@ The prediction result will be saved to `<TEST_DATA_DIR>/predictions.jsonl`.
 ```sh
 $ docker save aio2-bpr-baseline | gzip > aio2-bpr-baseline.tar.gz
 ```
+
+The saved Docker image should be about 2.4GB.
 
 ## License
 
