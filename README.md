@@ -1,15 +1,14 @@
-# AIO2 BPR Baseline
+# AIO2 Sōseki Baseline
 
-This is a question answering (QA) system based on [studio-ousia/soseki](https://github.com/studio-ousia/soseki), which utilizes [Binary Passage Retriever (BPR)](https://github.com/studio-ousia/bpr), an efficient passages retrieval model for a large collection of documents.
+This is a ported version of [Sōseki](https://github.com/studio-ousia/soseki) question answering (QA) system for [AIO2 competition](https://sites.google.com/view/project-aio/competition2).
 
-BPR is an efficient neural retrieval model for open-domain question answering.
-BPR integrates a *learning-to-hash* technique into [Dense Passage Retriever (DPR)](https://github.com/facebookresearch/DPR) to **represent the passage embeddings using compact binary codes** rather than
+Sōseki is an implementation of an end-to-end QA system utilizing [Binary Passage Retriever (BPR)](https://github.com/studio-ousia/bpr), an efficient passage retrieval model for a large collection of documents.
+BPR integrates a *learning-to-hash* technique into [Dense Passage Retriever (DPR)](https://github.com/facebookresearch/DPR) to represent the passage embeddings using compact binary codes rather than
 continuous vectors.
-It substantially **reduces the memory size without a loss of accuracy** tested on several QA datasets.
-(Please check out [the original BPR repository](https://github.com/studio-ousia/bpr) for more detailed information.)
+It substantially reduces the memory size without a loss of accuracy tested on several QA datasets.
 
-This repository's work is provided as one of the baseline systems for [AIO2 competition](https://sites.google.com/view/project-aio/competition2).
-Using the datasets for [cl-tohoku/AIO2_DPR_baseline](https://github.com/cl-tohoku/AIO2_DPR_baseline), the DPR baseline takes 20GB to encode 6.8 million paragraphs from Japanese Wikipedia, while our BPR takes only **674MB** to encode the same set of passages.
+This work is based on [the original implementation of Sōseki](https://github.com/studio-ousia/soseki) and is provided as one of the baseline systems for AIO2 competition.
+Using the datasets for [cl-tohoku/AIO2_DPR_baseline](https://github.com/cl-tohoku/AIO2_DPR_baseline), while the DPR baseline takes 20GB to encode 6.8 million paragraphs from Japanese Wikipedia, our model takes only **674MB** to encode the same set of passages.
 
 ## Installation
 
@@ -249,13 +248,13 @@ models
 **2. Build the Docker image**
 
 ```sh
-$ docker build -t aio2-bpr-baseline .
+$ docker build -t aio2-soseki-baseline .
 ```
 
 You can find the size of the image by executing the command below:
 
 ```sh
-$ docker run --rm aio2-bpr-baseline du -h --max-depth=0 /
+$ docker run --rm aio2-soseki-baseline du -h --max-depth=0 /
 ```
 
 **3. Run the image to perform prediction**
@@ -265,7 +264,7 @@ We assume `<TEST_DATA_DIR>` contains a test file such as [`aio_02_dev_unlabeled_
 Be sure to specify `<TEST_DATA_DIR>` by the absolute path.
 
 ```sh
-$ docker run --rm -v <TEST_DATA_DIR>:/app/data -it aio2-bpr-baseline \
+$ docker run --rm -v <TEST_DATA_DIR>:/app/data -it aio2-soseki-baseline \
     bash submission.sh data/aio_02_dev_unlabeled_v1.0.jsonl data/predictions.jsonl
 ```
 
@@ -274,7 +273,7 @@ The prediction result will be saved to `<TEST_DATA_DIR>/predictions.jsonl`.
 **4. Save a Docker image to file**
 
 ```sh
-$ docker save aio2-bpr-baseline | gzip > aio2-bpr-baseline.tar.gz
+$ docker save aio2-soseki-baseline | gzip > aio2-soseki-baseline.tar.gz
 ```
 
 The saved Docker image should be about 2.4GB.
